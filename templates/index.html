@@ -27,7 +27,6 @@
         input[type="text"] { flex: 1; padding: 10px 15px; border: 1px solid #ccc; border-radius: 20px; outline: none; font-size: 15px; }
         button#sendBtn { background: #0084ff; color: white; border: none; padding: 10px 20px; margin-left: 10px; border-radius: 20px; cursor: pointer; font-weight: bold; }
     </style>
-    <script src="{{ url_for('static', filename='socket.io.js') }}"></script>
 </head>
 <body>
 
@@ -51,22 +50,15 @@
 </div>
 
 <script>
-    // Умный выбор протокола: wss:// для ngrok, ws:// для локалки
-    const socket = new WebSocket("wss://" + window.location.host + "/ws"); 
-    
-    // Загружаем данные профиля из памяти устройства
+    // Железобетонное безопасное подключение сокетов к Render
+    const socket = new WebSocket("wss://" + window.location.host + "/ws");
+
     let username = localStorage.getItem('chat_username');
     let avatarUrl = localStorage.getItem('chat_avatar');
 
-    // Если в памяти СТРОГО пусто, то только тогда спрашиваем имя
     if (username === null || username === undefined || username === "") {
-        username = prompt("Введіть ваш нікнейм для загального чату:");
-        if (username === null || username.trim() === "") {
-            username = "Анонім_" + Math.floor(Math.random() * 1000);
-        }
+        username = prompt("Введіть ваш нікнейм для загального чату:") || "Анонім";
         avatarUrl = "https://flaticon.com";
-        
-        // Надежно фиксируем данные в браузере навсегда
         localStorage.setItem('chat_username', username);
         localStorage.setItem('chat_avatar', avatarUrl);
     }
@@ -80,7 +72,7 @@
     const headerAvatar = document.getElementById('headerAvatar');
 
     avatarInput.addEventListener('change', function(e) {
-        const file = e.target.files[0];
+        const file = e.target.files;
         if (file) {
             const reader = new FileReader();
             reader.onload = function(event) {
@@ -108,12 +100,13 @@
         }
     }
 
+    // Всеядный обработчик, который выведет любое входящее сообщение на экран
     socket.onmessage = function(event) {
         try {
             const chatData = JSON.parse(event.data);
 
             if (chatData && chatData.text) {
-                // Звук уведомления, если сообщение пришло от другого участника
+                // Звук уведомления
                 if (chatData.username !== username) {
                     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                     const osc = audioCtx.createOscillator();
@@ -126,7 +119,9 @@
 
                 const msgBlock = document.createElement('div');
                 msgBlock.className = 'message-block';
-                if (chatData.username === username) msgBlock.className += ' my-message';
+                if (chatData.username === username) {
+                    msgBlock.className += ' my-message';
+                }
 
                 const msgTime = chatData.time || ""; 
 
@@ -142,7 +137,7 @@
                 chatDiv.scrollTop = chatDiv.scrollHeight;
             }
         } catch (e) {
-            console.error("Ошибка чтения пакета:", e);
+            console.error("Ошибка пакета:", e);
         }
     };
 
