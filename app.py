@@ -1,3 +1,6 @@
+from gevent import monkey
+monkey.patch_all()
+
 from flask import Flask, render_template, request, jsonify
 from flask_sock import Sock
 import json
@@ -6,7 +9,6 @@ import os
 app = Flask(__name__)
 sock = Sock(app)
 
-clients = []
 HISTORY_FILE = 'chat_history.json'
 
 def load_history():
@@ -73,3 +75,4 @@ def chat(ws):
 if __name__ == '__main__':
     clients = []
     app.run(debug=False, host='0.0.0.0', port=5000)
+
