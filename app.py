@@ -6,7 +6,7 @@ import os
 app = Flask(__name__)
 sock = Sock(app)
 
-HISTORY_FILE = 'chat_history.json'
+clients = []
 
 def load_history():
     if os.path.exists(HISTORY_FILE):
