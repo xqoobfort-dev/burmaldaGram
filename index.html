@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BurmaldaGram - Загальний Чат</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f0f2f5; margin: 0; padding: 10px; display: flex; height: 100vh; justify-content: center; align-items: center; box-sizing: border-box; }
+        .chat-container { width: 100%; max-width: 450px; background: white; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: flex; flex-direction: column; height: 90vh; }
+        .chat-header { background: #0084ff; color: white; padding: 15px; border-radius: 10px 10px 0 0; display: flex; justify-content: space-between; align-items: center; }
+        .user-profile { display: flex; align-items: center; gap: 10px; }
+        .current-avatar { width: 35px; height: 35px; border-radius: 50%; border: 2px white solid; cursor: pointer; object-fit: cover; background: #eee; }
+        .change-avatar-btn { background: rgba(255,255,255,0.2); border: none; color: white; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 12px; }
+        #avatarInput { display: none; }
+        #chat { flex: 1; padding: 15px; overflow-y: auto; background: #f9f9f9; }
+        .message-block { display: flex; align-items: flex-start; margin-bottom: 15px; }
+        .avatar { width: 40px; height: 40px; border-radius: 50%; margin-right: 10px; object-fit: cover; background: #eee; }
+        .message-content { background: #e4e6eb; padding: 10px 14px; border-radius: 18px; max-width: 75%; word-break: break-word; }
+        .username { font-weight: bold; font-size: 13px; color: #555; margin-bottom: 3px; }
+        .text { font-size: 15px; color: #111; }
+        .my-message { flex-direction: row-reverse; }
+        .my-message .avatar { margin-right: 0; margin-left: 10px; }
+        .my-message .message-content { background: #0084ff; color: white; }
+        .my-message .username { color: #e0e0e0; text-align: right; }
+        .my-message .text { color: white; }
+        .input-area { display: flex; padding: 15px; border-top: 1px solid #eee; background: white; border-radius: 0 0 10px 10px; }
+        input[type="text"] { flex: 1; padding: 10px 15px; border: 1px solid #ccc; border-radius: 20px; outline: none; font-size: 15px; }
+        button#sendBtn { background: #0084ff; color: white; border: none; padding: 10px 20px; margin-left: 10px; border-radius: 20px; cursor: pointer; font-weight: bold; }
+    </style>
+    <script src="{{ url_for('static', filename='socket.io.js') }}"></script>
+</head>
+<body>
+
+<div class="chat-container">
+    <div class="chat-header">
+        <div class="user-profile">
+            <img class="current-avatar" id="headerAvatar" src="" alt="Аватар" onclick="document.getElementById('avatarInput').click()">
+            <span id="headerUsername">Користувач</span>
+        </div>
+        <div>
+            <button class="change-avatar-btn" onclick="document.getElementById('avatarInput').click()">Фото</button>
+            <button class="change-avatar-btn" style="background: rgba(255,0,0,0.3); margin-left: 3px;" onclick="clearChat()">Очистити</button>
+        </div>
+        <input type="file" id="avatarInput" accept="image/*">
+    </div>
+    <div id="chat"></div>
+    <div class="input-area">
+        <input type="text" id="messageInput" placeholder="Напишіть повідомлення...">
+        <button id="sendBtn" onclick="sendMessage()">Текст</button>
+    </div>
+</div>
+
+<script>
+    // Умный выбор протокола: wss:// для ngrok, ws:// для локалки
+    const wsProtocol = window.location.protocol === "https:" ? "wss://" : "ws://";
+    const socket = new WebSocket(wsProtocol + window.location.host + "/ws");
+
+    // Загружаем данные профиля из памяти устройства
+    let username = localStorage.getItem('chat_username');
+    let avatarUrl = localStorage.getItem('chat_avatar');
+
+    // Если в памяти СТРОГО пусто, то только тогда спрашиваем имя
+    if (username === null || username === undefined || username === "") {
+        username = prompt("Введіть ваш нікнейм для загального чату:");
+        if (username === null || username.trim() === "") {
+            username = "Анонім_" + Math.floor(Math.random() * 1000);
+        }
+        avatarUrl = "https://flaticon.com";
+        
+        // Надежно фиксируем данные в браузере навсегда
+        localStorage.setItem('chat_username', username);
+        localStorage.setItem('chat_avatar', avatarUrl);
+    }
+
+    document.getElementById('headerUsername').textContent = username;
+    document.getElementById('headerAvatar').src = avatarUrl;
+
+    const chatDiv = document.getElementById('chat');
+    const input = document.getElementById('messageInput');
+    const avatarInput = document.getElementById('avatarInput');
+    const headerAvatar = document.getElementById('headerAvatar');
+
+    avatarInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                avatarUrl = event.target.result;
+                headerAvatar.src = avatarUrl; 
+                localStorage.setItem('chat_avatar', avatarUrl);
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    function sendMessage() {
+        const textValue = input.value.trim();
+        if (textValue !== "") {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            socket.send(JSON.stringify({
+                username: username,
+                text: textValue,
+                avatar: avatarUrl,
+                time: timeString
+            }));
+            input.value = '';
+        }
+    }
+
+    socket.onmessage = function(event) {
+        try {
+            const chatData = JSON.parse(event.data);
+
+            if (chatData && chatData.text) {
+                // Звук уведомления, если сообщение пришло от другого участника
+                if (chatData.username !== username) {
+                    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.connect(gain); gain.connect(audioCtx.destination);
+                    osc.frequency.setValueAtTime(587.33, audioCtx.currentTime);
+                    gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                    osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+                }
+
+                const msgBlock = document.createElement('div');
+                msgBlock.className = 'message-block';
+                if (chatData.username === username) msgBlock.className += ' my-message';
+
+                const msgTime = chatData.time || ""; 
+
+                msgBlock.innerHTML = `
+                    <img class="avatar" src="${chatData.avatar}" alt="avatar">
+                    <div class="message-content">
+                        <div class="username">${chatData.username}</div>
+                        <div class="text">${chatData.text}</div>
+                        <div style="font-size: 9px; opacity: 0.5; text-align: right; margin-top: 4px;">${msgTime}</div>
+                    </div>
+                `;
+                chatDiv.appendChild(msgBlock);
+                chatDiv.scrollTop = chatDiv.scrollHeight;
+            }
+        } catch (e) {
+            console.error("Ошибка чтения пакета:", e);
+        }
+    };
+
+    function clearChat() {
+        if (confirm("Ви впевнені, що хочете очистити весь загальний чат?")) {
+            fetch('/clear_history', { method: 'POST' }).then(() => {
+                chatDiv.innerHTML = '';
+            });
+        }
+    }
+
+    input.addEventListener("keypress", function(event) {
+        if (event.key === "Enter") sendMessage();
+    });
+</script>
+</body>
+</html>
