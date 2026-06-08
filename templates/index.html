@@ -52,9 +52,8 @@
 
 <script>
     // Умный выбор протокола: wss:// для ngrok, ws:// для локалки
-    const wsProtocol = window.location.protocol === "https:" ? "wss://" : "ws://";
-    const socket = new WebSocket(wsProtocol + window.location.host + "/ws");
-
+    const socket = new WebSocket("wss://" + window.location.host + "/ws"); 
+    
     // Загружаем данные профиля из памяти устройства
     let username = localStorage.getItem('chat_username');
     let avatarUrl = localStorage.getItem('chat_avatar');
