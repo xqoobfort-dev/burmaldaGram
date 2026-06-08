@@ -51,7 +51,7 @@
 
 <script>
     // Железобетонное безопасное подключение сокетов к Render
-    const socket = new WebSocket("wss://" + window.location.host + "/ws");
+    const socket = new WebSocket((window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host + '/ws');
 
     let username = localStorage.getItem('chat_username');
     let avatarUrl = localStorage.getItem('chat_avatar');
