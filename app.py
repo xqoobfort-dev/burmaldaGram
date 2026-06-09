@@ -1,18 +1,9 @@
 import os
 import json
 from flask import Flask, render_template, request, jsonify
-from pusher import Pusher
 
 app = Flask(__name__)
 HISTORY_FILE = 'chat_history.json'
-
-pusher_client = Pusher(
-  app_id='2164473',
-  key='c61ab00a01d16eb5107f',
-  secret='72c7d5b0a7a81b287ee3',
-  cluster='eu',
-  ssl=True
-)
 
 def load_history():
     if os.path.exists(HISTORY_FILE):
@@ -42,7 +33,6 @@ def send_message():
     data = request.json
     if data and data.get('message'):
         save_to_history(data)
-        pusher_client.trigger('chat-channel', 'new-message', data)
         return jsonify({"status": "ok"})
     return jsonify({"status": "error"}), 400
 
@@ -53,8 +43,8 @@ def clear_history():
             os.remove(HISTORY_FILE)
         except:
             pass
-    pusher_client.trigger('chat-channel', 'clear-chat', {})
     return jsonify({"status": "cleared"})
 
 if __name__ == '__main__':
     app.run(debug=True)
+
