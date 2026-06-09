@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Burmaldagram</title>
+    
+    <!-- Официальный скрипт Pusher подключен правильно в теге head -->
+    <script src="https://pusher.com"></script>
+
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; }
@@ -28,8 +32,6 @@
         .btn-send { background: #1877f2; color: white; border: none; padding: 0 20px; border-radius: 20px; font-weight: bold; cursor: pointer; transition: background 0.2s; }
         .btn-send:hover { background: #145dbf; }
     </style>
-    <!-- Підключаємо Pusher-клієнт у браузер -->
-    <script src="https://pusher.com"></script>
 </head>
 <body>
 
@@ -37,7 +39,8 @@
     <div class="chat-header">
         <div class="user-info">
             <div class="user-avatar">
-                <img id="headerAvatar" src="/static/default_avatar.png" alt="Avatar">
+                <!-- Надежная ссылка на аватарку -->
+                <img id="headerAvatar" src="https://flaticon.com" alt="Avatar">
             </div>
             <span class="header-username" id="headerUsername">Завантаження...</span>
         </div>
@@ -64,13 +67,13 @@ if (!username) {
     if (!username || username.trim() === "") {
         username = "Анонім_" + Math.floor(Math.random() * 1000);
     }
-    avatarUrl = "/static/default_avatar.png";
+    avatarUrl = "https://flaticon.com";
     localStorage.setItem('chat_username', username);
     localStorage.setItem('chat_avatar', avatarUrl);
 }
 
 document.getElementById('headerUsername').textContent = username;
-document.getElementById('headerAvatar').src = avatarUrl || "/static/default_avatar.png";
+document.getElementById('headerAvatar').src = avatarUrl || "https://flaticon.com";
 
 if ("Notification" in window && Notification.permission === "default") {
     Notification.requestPermission();
@@ -80,7 +83,7 @@ function showScreenNotification(sender, text, icon) {
     if ("Notification" in window && Notification.permission === "granted" && document.hidden) {
         new Notification(`Нове повідомлення від ${sender}`, {
             body: text,
-            icon: icon || '/static/default_avatar.png'
+            icon: icon || 'https://flaticon.com'
         });
     }
 }
@@ -89,7 +92,7 @@ function appendMessage(data) {
     const chatBox = document.getElementById('chat');
     chatBox.innerHTML += `
         <div class="message-container">
-            <img src="${data.avatar || '/static/default_avatar.png'}" class="msg-avatar">
+            <img src="${data.avatar || 'https://flaticon.com'}" class="msg-avatar">
             <div class="msg-content">
                 <span class="msg-author">${data.username}</span>
                 <span class="msg-text">${data.message}</span>
@@ -99,11 +102,10 @@ function appendMessage(data) {
     chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-// Налаштування Pusher з твоїми ключами:
+// Твои рабочие ключи Pusher
 const pusher = new Pusher('c61ab00a01d16eb5107f', { cluster: 'eu' });
 const channel = pusher.subscribe('chat-channel');
 
-// Слухаємо миттєві повідомлення в ефірі
 channel.bind('new-message', function(data) {
     appendMessage(data);
     
@@ -118,7 +120,6 @@ channel.bind('clear-chat', function() {
     document.getElementById('chat').innerHTML = '';
 });
 
-// Завантаження історії один раз при старті
 async function loadInitialHistory() {
     try {
         const res = await fetch('/get_messages');
@@ -169,4 +170,5 @@ async function clearChat() {
 
 </body>
 </html>
+
 
