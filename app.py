@@ -45,6 +45,14 @@ def clear_history():
             pass
     return jsonify({"status": "cleared"})
 
+@app.route('/manifest.json')
+def serve_manifest():
+    return app.send_static_file('manifest.json') if os.path.exists('static/manifest.json') else render_template('../manifest.json')
+
+@app.route('/sw.js')
+def serve_sw():
+    return app.send_static_file('sw.js') if os.path.exists('static/sw.js') else render_template('../sw.js')
+
 if __name__ == '__main__':
     app.run(debug=True)
 
