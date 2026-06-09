@@ -1,14 +1,11 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="uk">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Burmaldagram</title>
-    
-    <!-- Подключаем паспорт PWA приложения -->
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#1877f2">
-
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; }
@@ -49,9 +46,7 @@
             <button class="btn-header" style="background: #e41e3f;" onclick="clearChat()">Очистити</button>
         </div>
     </div>
-
     <div class="chat-messages" id="chat"></div>
-
     <div class="chat-input-area">
         <input type="text" class="input-message" id="messageInput" placeholder="Напишіть повідомлення..." onkeydown="if(event.key === 'Enter') sendMessage()">
         <button class="btn-send" onclick="sendMessage()">Текст</button>
@@ -105,11 +100,10 @@ async function checkMessages() {
                 let audio = new Audio('/static/notification.mp3');
                 audio.play().catch(() => {});
             }
-            
             lastMessageCount = messages.length;
         }
     } catch (e) {
-        console.error("Ошибка обновления чата:", e);
+        console.error(e);
     }
 }
 
@@ -122,21 +116,17 @@ async function sendMessage() {
         await fetch('/send_message', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                username: username, 
-                message: text, 
-                avatar: avatarUrl 
-            })
+            body: JSON.stringify({ username: username, message: text, avatar: avatarUrl })
         });
         input.value = '';
         checkMessages();
     } catch (e) {
-        console.error("Ошибка отправки:", e);
+        console.error(e);
     }
 }
 
 function changeAvatar() {
-    const newUrl = prompt("Вставте посилання на нову аватарку (включаючи GIF):", avatarUrl);
+    const newUrl = prompt("Вставте посилання на нову аватарку:", avatarUrl);
     if (newUrl && newUrl.trim() !== "") {
         avatarUrl = newUrl.trim();
         localStorage.setItem('chat_avatar', avatarUrl);
@@ -153,20 +143,39 @@ async function clearChat() {
     }
 }
 
-// Регистрация Service Worker для PWA фонового режима
+// РЕЄСТРАЦІЯ PWA ТА ЗБІР ТОКЕНІВ ДЛЯ FIREBASE PUSH
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
-            .then(reg => console.log('Фоновый режим успешно активирован!', reg))
-            .catch(err => console.error('Ошибка активации PWA:', err));
+        navigator.serviceWorker.register('/sw.js').then(async (reg) => {
+            console.log('Service Worker активовано!');
+            
+            // Запитуємо системний токен підписки Google Push Cloud
+            try {
+                const const_key = "BPTk9tMXi5aJIQKf52DGOOSOHfV9iRpZpU4fjV1yO9I5dcx4oxrhz2yx5aEi9FMTEY7law8QcOEeOk448Fblhc4";
+                let sub = await reg.pushManager.getSubscription();
+                if (!sub) {
+                    sub = await reg.pushManager.subscribe({
+                        userVisibleOnly: true,
+                        applicationServerKey: const_key
+                    });
+                }
+                if (sub) {
+                    // Передаємо унікальний токен телефона на наш сервер Render
+                    await fetch('/register_token', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username: username, token: JSON.stringify(sub) })
+                    });
+                }
+            } catch(pushError) {
+                console.log("Очікування дозволу на системні пуші...");
+            }
+        });
     });
 }
 
 setInterval(checkMessages, 2500);
 checkMessages();
 </script>
-
 </body>
 </html>
-
-
