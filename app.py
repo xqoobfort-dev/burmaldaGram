@@ -50,10 +50,14 @@ def send_message():
         return jsonify({"status": "ok"})
     return jsonify({"status": "error"}), 400
 
-@app.route('/clear_history', methods=['POST'])
+# Замени строку декоратора на эту:
+@app.route('/clear_history', methods=['GET', 'POST'])
 def clear_history():
     if os.path.exists(HISTORY_FILE):
-        os.remove(HISTORY_FILE)
+        try:
+            os.remove(HISTORY_FILE)
+        except:
+            pass
     pusher_client.trigger('chat-channel', 'clear-chat', {})
     return jsonify({"status": "cleared"})
 
