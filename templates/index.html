@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Burmaldagram</title>
+    
+    <!-- Подключаем паспорт PWA приложения -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#1877f2">
+
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; }
@@ -72,7 +77,6 @@ document.getElementById('headerAvatar').src = avatarUrl || "https://flaticon.com
 
 let lastMessageCount = 0;
 
-// Функция автоматического обновления чата
 async function checkMessages() {
     try {
         const res = await fetch('/get_messages');
@@ -96,7 +100,6 @@ async function checkMessages() {
             
             chatBox.scrollTop = chatBox.scrollHeight;
             
-            // Если пришло новое сообщение от другого игрока — играем звук
             const lastMsg = messages[messages.length - 1];
             if (lastMsg.username !== username && lastMessageCount > 0) {
                 let audio = new Audio('/static/notification.mp3');
@@ -126,7 +129,7 @@ async function sendMessage() {
             })
         });
         input.value = '';
-        checkMessages(); // Сразу обновляем чат после отправки
+        checkMessages();
     } catch (e) {
         console.error("Ошибка отправки:", e);
     }
@@ -150,11 +153,20 @@ async function clearChat() {
     }
 }
 
-// Запускаем таймер проверки раз в 2.5 секунды, чтобы бесплатный Render не лагал
+// Регистрация Service Worker для PWA фонового режима
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+            .then(reg => console.log('Фоновый режим успешно активирован!', reg))
+            .catch(err => console.error('Ошибка активации PWA:', err));
+    });
+}
+
 setInterval(checkMessages, 2500);
 checkMessages();
 </script>
 
 </body>
 </html>
+
 
