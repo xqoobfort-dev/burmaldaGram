@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="uk">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -28,6 +28,8 @@
         .btn-send { background: #1877f2; color: white; border: none; padding: 0 20px; border-radius: 20px; font-weight: bold; cursor: pointer; transition: background 0.2s; }
         .btn-send:hover { background: #145dbf; }
     </style>
+    <!-- Підключаємо Pusher-клієнт у браузер -->
+    <script src="https://pusher.com"></script>
 </head>
 <body>
 
@@ -37,18 +39,18 @@
             <div class="user-avatar">
                 <img id="headerAvatar" src="/static/default_avatar.png" alt="Avatar">
             </div>
-            <span class="header-username" id="headerUsername">Загрузка...</span>
+            <span class="header-username" id="headerUsername">Завантаження...</span>
         </div>
         <div class="header-buttons">
             <button class="btn-header" onclick="changeAvatar()">Фото</button>
-            <button class="btn-header" style="background: #e41e3f;" onclick="clearChat()">Очистить</button>
+            <button class="btn-header" style="background: #e41e3f;" onclick="clearChat()">Очистити</button>
         </div>
     </div>
 
     <div class="chat-messages" id="chat"></div>
 
     <div class="chat-input-area">
-        <input type="text" class="input-message" id="messageInput" placeholder="Напишите сообщение..." onkeydown="if(event.key === 'Enter') sendMessage()">
+        <input type="text" class="input-message" id="messageInput" placeholder="Напишіть повідомлення..." onkeydown="if(event.key === 'Enter') sendMessage()">
         <button class="btn-send" onclick="sendMessage()">Текст</button>
     </div>
 </div>
@@ -58,9 +60,9 @@ let username = localStorage.getItem('chat_username');
 let avatarUrl = localStorage.getItem('chat_avatar');
 
 if (!username) {
-    username = prompt("Введите ваш никнейм для чата:");
+    username = prompt("Введіть ваш нікнейм для чату:");
     if (!username || username.trim() === "") {
-        username = "Аноним_" + Math.floor(Math.random() * 1000);
+        username = "Анонім_" + Math.floor(Math.random() * 1000);
     }
     avatarUrl = "/static/default_avatar.png";
     localStorage.setItem('chat_username', username);
@@ -70,57 +72,63 @@ if (!username) {
 document.getElementById('headerUsername').textContent = username;
 document.getElementById('headerAvatar').src = avatarUrl || "/static/default_avatar.png";
 
-let lastMessageCount = 0;
-
 if ("Notification" in window && Notification.permission === "default") {
     Notification.requestPermission();
 }
 
 function showScreenNotification(sender, text, icon) {
     if ("Notification" in window && Notification.permission === "granted" && document.hidden) {
-        new Notification(`Новое сообщение от ${sender}`, {
+        new Notification(`Нове повідомлення від ${sender}`, {
             body: text,
             icon: icon || '/static/default_avatar.png'
         });
     }
 }
 
-async function checkMessages() {
+function appendMessage(data) {
+    const chatBox = document.getElementById('chat');
+    chatBox.innerHTML += `
+        <div class="message-container">
+            <img src="${data.avatar || '/static/default_avatar.png'}" class="msg-avatar">
+            <div class="msg-content">
+                <span class="msg-author">${data.username}</span>
+                <span class="msg-text">${data.message}</span>
+            </div>
+        </div>
+    `;
+    chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+// Налаштування Pusher з твоїми ключами:
+const pusher = new Pusher('c61ab00a01d16eb5107f', { cluster: 'eu' });
+const channel = pusher.subscribe('chat-channel');
+
+// Слухаємо миттєві повідомлення в ефірі
+channel.bind('new-message', function(data) {
+    appendMessage(data);
+    
+    if (data.username !== username) {
+        let audio = new Audio('/static/notification.mp3');
+        audio.play().catch(() => {});
+        showScreenNotification(data.username, data.message, data.avatar);
+    }
+});
+
+channel.bind('clear-chat', function() {
+    document.getElementById('chat').innerHTML = '';
+});
+
+// Завантаження історії один раз при старті
+async function loadInitialHistory() {
     try {
         const res = await fetch('/get_messages');
         const messages = await res.json();
-        
-        if (messages.length > lastMessageCount) {
-            const chatBox = document.getElementById('chat');
-            chatBox.innerHTML = '';
-            
-            messages.forEach(data => {
-                chatBox.innerHTML += `
-                    <div class="message-container">
-                        <img src="${data.avatar || '/static/default_avatar.png'}" class="msg-avatar">
-                        <div class="msg-content">
-                            <span class="msg-author">${data.username}</span>
-                            <span class="msg-text">${data.message}</span>
-                        </div>
-                    </div>
-                `;
-            });
-            
-            chatBox.scrollTop = chatBox.scrollHeight;
-            
-            const lastMsg = messages[messages.length - 1];
-            if (lastMsg.username !== username && lastMessageCount > 0) {
-                let audio = new Audio('/static/notification.mp3');
-                audio.play().catch(() => {});
-                showScreenNotification(lastMsg.username, lastMsg.message, lastMsg.avatar);
-            }
-            
-            lastMessageCount = messages.length;
-        }
-    } catch (e) {
-        console.error("Ошибка обновления чата:", e);
+        messages.forEach(data => appendMessage(data));
+    } catch(e) {
+        console.error(e);
     }
 }
+loadInitialHistory();
 
 async function sendMessage() {
     const input = document.getElementById('messageInput');
@@ -133,19 +141,18 @@ async function sendMessage() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 username: username, 
-                message: text,
+                message: text, 
                 avatar: avatarUrl 
             })
         });
         input.value = '';
-        checkMessages();
     } catch (e) {
-        console.error("Ошибка отправки:", e);
+        console.error("Помилка відправки:", e);
     }
 }
 
 function changeAvatar() {
-    const newUrl = prompt("Вставьте ссылку на новую аватарку (включая GIF):", avatarUrl);
+    const newUrl = prompt("Вставте посилання на нову аватарку (включаючи GIF):", avatarUrl);
     if (newUrl && newUrl.trim() !== "") {
         avatarUrl = newUrl.trim();
         localStorage.setItem('chat_avatar', avatarUrl);
@@ -154,16 +161,10 @@ function changeAvatar() {
 }
 
 async function clearChat() {
-    if (confirm("Очистить историю для всех?")) {
+    if (confirm("Очистити історію для всіх?")) {
         await fetch('/clear_history', { method: 'POST' });
-        lastMessageCount = 0;
-        document.getElementById('chat').innerHTML = '';
-        checkMessages();
     }
 }
-
-setInterval(checkMessages, 2000);
-checkMessages();
 </script>
 
 </body>
