@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Burmaldagram</title>
     
-    <!-- Подключаем Pusher-клиент -->
+    <!-- Скрипт Pusher теперь загружается ПЕРВЫМ в самом верху страницы -->
     <script src="https://pusher.com"></script>
 
     <style>
@@ -74,7 +74,6 @@ if (!username) {
 document.getElementById('headerUsername').textContent = username;
 document.getElementById('headerAvatar').src = avatarUrl || "https://flaticon.com";
 
-// Запрашиваем права
 if ("Notification" in window) {
     Notification.requestPermission();
 }
@@ -118,24 +117,27 @@ function appendMessage(data) {
     chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-// Настройка Pusher
-const pusher = new Pusher('c61ab00a01d16eb5107f', { cluster: 'eu' });
-const channel = pusher.subscribe('chat-channel');
+// Проверяем, загрузилась ли библиотека
+if (typeof Pusher !== 'undefined') {
+    const pusher = new Pusher('c61ab00a01d16eb5107f', { cluster: 'eu' });
+    const channel = pusher.subscribe('chat-channel');
 
-channel.bind('new-message', function(data) {
-    appendMessage(data);
-    
-    if (data.username !== username) {
-        playSystemBeep(); // Принудительный системный звук для триггера Windows
-        let audio = new Audio('/static/notification.mp3');
-        audio.play().catch(() => {});
-        showScreenNotification(data.username, data.message, data.avatar);
-    }
-});
+    channel.bind('new-message', function(data) {
+        appendMessage(data);
+        if (data.username !== username) {
+            playSystemBeep();
+            let audio = new Audio('/static/notification.mp3');
+            audio.play().catch(() => {});
+            showScreenNotification(data.username, data.message, data.avatar);
+        }
+    });
 
-channel.bind('clear-chat', function() {
-    document.getElementById('chat').innerHTML = '';
-});
+    channel.bind('clear-chat', function() {
+        document.getElementById('chat').innerHTML = '';
+    });
+} else {
+    console.error("Критическая ошибка: Pusher не загрузился!");
+}
 
 async function loadInitialHistory() {
     try {
@@ -157,11 +159,7 @@ async function sendMessage() {
         await fetch('/send_message', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                username: username, 
-                message: text, 
-                avatar: avatarUrl 
-            })
+            body: JSON.stringify({ username: username, message: text, avatar: avatarUrl })
         });
         input.value = '';
     } catch (e) {
@@ -184,6 +182,5 @@ async function clearChat() {
     }
 }
 </script>
-
 </body>
 </html>
