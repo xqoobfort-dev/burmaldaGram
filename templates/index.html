@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Burmaldagram</title>
     
-    <!-- Официальный скрипт Pusher подключен правильно в теге head -->
+    <!-- Подключаем Pusher-клиент -->
     <script src="https://pusher.com"></script>
 
     <style>
@@ -39,7 +39,6 @@
     <div class="chat-header">
         <div class="user-info">
             <div class="user-avatar">
-                <!-- Надежная ссылка на аватарку -->
                 <img id="headerAvatar" src="https://flaticon.com" alt="Avatar">
             </div>
             <span class="header-username" id="headerUsername">Завантаження...</span>
@@ -75,8 +74,25 @@ if (!username) {
 document.getElementById('headerUsername').textContent = username;
 document.getElementById('headerAvatar').src = avatarUrl || "https://flaticon.com";
 
-if ("Notification" in window && Notification.permission === "default") {
+// Запрашиваем права
+if ("Notification" in window) {
     Notification.requestPermission();
+}
+
+function playSystemBeep() {
+    try {
+        let ctx = new (window.AudioContext || window.webkitAudioContext)();
+        let osc = ctx.createOscillator();
+        let gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.value = 800; 
+        gain.gain.setValueAtTime(0.1, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.15);
+    } catch(e) {}
 }
 
 function showScreenNotification(sender, text, icon) {
@@ -102,7 +118,7 @@ function appendMessage(data) {
     chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-// Твои рабочие ключи Pusher
+// Настройка Pusher
 const pusher = new Pusher('c61ab00a01d16eb5107f', { cluster: 'eu' });
 const channel = pusher.subscribe('chat-channel');
 
@@ -110,6 +126,7 @@ channel.bind('new-message', function(data) {
     appendMessage(data);
     
     if (data.username !== username) {
+        playSystemBeep(); // Принудительный системный звук для триггера Windows
         let audio = new Audio('/static/notification.mp3');
         audio.play().catch(() => {});
         showScreenNotification(data.username, data.message, data.avatar);
@@ -148,7 +165,7 @@ async function sendMessage() {
         });
         input.value = '';
     } catch (e) {
-        console.error("Помилка відправки:", e);
+        console.error(e);
     }
 }
 
@@ -170,5 +187,3 @@ async function clearChat() {
 
 </body>
 </html>
-
-
