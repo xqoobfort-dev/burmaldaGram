@@ -1,137 +1,129 @@
 <!DOCTYPE html>
-<html lang="uk">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BurmaldaGram - Загальний Чат</title>
+    <title>Burmaldagram</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background-color: #f0f2f5; margin: 0; padding: 10px; display: flex; height: 100vh; justify-content: center; align-items: center; box-sizing: border-box; }
-        .chat-container { width: 100%; max-width: 450px; background: white; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: flex; flex-direction: column; height: 90vh; }
-        .chat-header { background: #0084ff; color: white; padding: 15px; border-radius: 10px 10px 0 0; display: flex; justify-content: space-between; align-items: center; }
-        .user-profile { display: flex; align-items: center; gap: 10px; }
-        .current-avatar { width: 35px; height: 35px; border-radius: 50%; border: 2px white solid; cursor: pointer; object-fit: cover; background: #eee; }
-        .change-avatar-btn { background: rgba(255,255,255,0.2); border: none; color: white; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 12px; }
-        #avatarInput { display: none; }
-        #chat { flex: 1; padding: 15px; overflow-y: auto; background: #f9f9f9; }
-        .message-block { display: flex; align-items: flex-start; margin-bottom: 15px; }
-        .avatar { width: 40px; height: 40px; border-radius: 50%; margin-right: 10px; object-fit: cover; background: #eee; }
-        .message-content { background: #e4e6eb; padding: 10px 14px; border-radius: 18px; max-width: 75%; word-break: break-word; }
-        .username { font-weight: bold; font-size: 13px; color: #555; margin-bottom: 3px; }
-        .text { font-size: 15px; color: #111; }
-        .my-message { flex-direction: row-reverse; }
-        .my-message .avatar { margin-right: 0; margin-left: 10px; }
-        .my-message .message-content { background: #0084ff; color: white; }
-        .my-message .username { color: #e0e0e0; text-align: right; }
-        .my-message .text { color: white; }
-        .input-area { display: flex; padding: 15px; border-top: 1px solid #eee; background: white; border-radius: 0 0 10px 10px; }
-        input[type="text"] { flex: 1; padding: 10px 15px; border: 1px solid #ccc; border-radius: 20px; outline: none; font-size: 15px; }
-        button#sendBtn { background: #0084ff; color: white; border: none; padding: 10px 20px; margin-left: 10px; border-radius: 20px; cursor: pointer; font-weight: bold; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        .chat-container { width: 100%; max-width: 500px; height: 90vh; background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: flex; flex-direction: column; overflow: hidden; }
+        .chat-header { background: #1877f2; color: white; padding: 15px; display: flex; align-items: center; justify-content: space-between; }
+        .user-info { display: flex; align-items: center; gap: 10px; }
+        .user-avatar img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid white; }
+        .header-username { font-weight: bold; font-size: 1.1rem; }
+        .header-buttons { display: flex; gap: 8px; }
+        .btn-header { background: rgba(255,255,255,0.2); border: none; color: white; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: bold; transition: background 0.2s; }
+        .btn-header:hover { background: rgba(255,255,255,0.3); }
+        .chat-messages { flex: 1; padding: 15px; overflow-y: auto; background: #f7f9fa; display: flex; flex-direction: column; gap: 12px; }
+        .message-container { display: flex; align-items: flex-start; gap: 10px; animation: fadeIn 0.2s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        .msg-avatar { width: 35px; height: 35px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+        .msg-content { background: white; padding: 8px 12px; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); max-width: 80%; }
+        .msg-author { font-weight: bold; color: #1877f2; font-size: 0.9rem; margin-bottom: 2px; display: block; }
+        .msg-text { color: #000000; font-size: 0.95rem; word-break: break-word; }
+        .chat-input-area { padding: 15px; background: white; border-top: 1px solid #e4e6eb; display: flex; gap: 10px; }
+        .input-message { flex: 1; padding: 10px 15px; border: 1px solid #ccd0d5; border-radius: 20px; outline: none; font-size: 0.95rem; transition: border-color 0.2s; }
+        .input-message:focus { border-color: #1877f2; }
+        .btn-send { background: #1877f2; color: white; border: none; padding: 0 20px; border-radius: 20px; font-weight: bold; cursor: pointer; transition: background 0.2s; }
+        .btn-send:hover { background: #145dbf; }
     </style>
-    
 </head>
 <body>
 
 <div class="chat-container">
     <div class="chat-header">
-        <div class="user-profile">
-            <img class="current-avatar" id="headerAvatar" src="" alt="Аватар" onclick="document.getElementById('avatarInput').click()">
-            <span id="headerUsername">Користувач</span>
+        <div class="user-info">
+            <div class="user-avatar">
+                <img id="headerAvatar" src="/static/default_avatar.png" alt="Avatar">
+            </div>
+            <span class="header-username" id="headerUsername">Загрузка...</span>
         </div>
-        <div>
-            <button class="change-avatar-btn" onclick="document.getElementById('avatarInput').click()">Фото</button>
-            <button class="change-avatar-btn" style="background: rgba(255,0,0,0.3); margin-left: 3px;" onclick="clearChat()">Очистити</button>
+        <div class="header-buttons">
+            <button class="btn-header" onclick="changeAvatar()">Фото</button>
+            <button class="btn-header" style="background: #e41e3f;" onclick="clearChat()">Очистить</button>
         </div>
-        <input type="file" id="avatarInput" accept="image/*">
     </div>
-    <div id="chat"></div>
-    <div class="input-area">
-        <input type="text" id="messageInput" placeholder="Напишіть повідомлення...">
-        <button id="sendBtn" onclick="sendMessage()">Текст</button>
+
+    <div class="chat-messages" id="chat"></div>
+
+    <div class="chat-input-area">
+        <input type="text" class="input-message" id="messageInput" placeholder="Напишите сообщение..." onkeydown="if(event.key === 'Enter') sendMessage()">
+        <button class="btn-send" onclick="sendMessage()">Текст</button>
     </div>
 </div>
 
 <script>
-// 1. ЗАВАНТАЖУЄМО ДАНІ ПРОФІЛЮ З ПАМ'ЯТІ БРАУЗЕРА
 let username = localStorage.getItem('chat_username');
 let avatarUrl = localStorage.getItem('chat_avatar');
 
-// Якщо користувач зайшов уперше — запитуємо нікнейм
 if (!username) {
-    username = prompt("Введіть ваш нікнейм для чату:");
+    username = prompt("Введите ваш никнейм для чата:");
     if (!username || username.trim() === "") {
-        username = "Анонім_" + Math.floor(Math.random() * 1000);
+        username = "Аноним_" + Math.floor(Math.random() * 1000);
     }
-    avatarUrl = "/static/default_avatar.png"; // твоя стандартна аватарка
-
+    avatarUrl = "/static/default_avatar.png";
     localStorage.setItem('chat_username', username);
     localStorage.setItem('chat_avatar', avatarUrl);
 }
 
-// Виводимо нікнейм у шапку сайту
-const headerUsername = document.getElementById('headerUsername');
-if (headerUsername) {
-    headerUsername.textContent = username;
-}
+document.getElementById('headerUsername').textContent = username;
+document.getElementById('headerAvatar').src = avatarUrl || "/static/default_avatar.png";
 
 let lastMessageCount = 0;
 
-// Запитуємо дозвіл на сповіщення на екрані
 if ("Notification" in window && Notification.permission === "default") {
     Notification.requestPermission();
 }
 
-function showScreenNotification(sender, text) {
+function showScreenNotification(sender, text, icon) {
     if ("Notification" in window && Notification.permission === "granted" && document.hidden) {
-        new Notification(`Нове повідомлення від ${sender}`, {
+        new Notification(`Новое сообщение от ${sender}`, {
             body: text,
-            icon: '/static/default_avatar.png'
+            icon: icon || '/static/default_avatar.png'
         });
     }
 }
 
-// 2. АВТОМАТИЧНЕ ОНОВЛЕННЯ ЧАТУ КОЖНІ 2 СЕКУНДИ
 async function checkMessages() {
     try {
         const res = await fetch('/get_messages');
         const messages = await res.json();
         
         if (messages.length > lastMessageCount) {
-            const chatBox = document.getElementById('chat'); // твій блок повідомлень
+            const chatBox = document.getElementById('chat');
             chatBox.innerHTML = '';
             
             messages.forEach(data => {
-                // Відображаємо повідомлення з підтримкою аватарок, як у тебе в дизайні
                 chatBox.innerHTML += `
-                    <div class="message-container" style="margin-bottom: 12px; display: flex; align-items: center; gap: 10px;">
-                        <img src="${data.avatar || '/static/default_avatar.png'}" style="width: 35px; height: 35px; border-radius: 50%;">
-                        <div>
-                            <span style="font-weight: bold; color: #4ba3e3;">${data.username}:</span>
-                            <span style="color: white; margin-left: 5px;">${data.message}</span>
+                    <div class="message-container">
+                        <img src="${data.avatar || '/static/default_avatar.png'}" class="msg-avatar">
+                        <div class="msg-content">
+                            <span class="msg-author">${data.username}</span>
+                            <span class="msg-text">${data.message}</span>
                         </div>
                     </div>
                 `;
             });
             
-            chatBox.scrollTop = chatBox.scrollHeight; // Скролимо чат вниз
+            chatBox.scrollTop = chatBox.scrollHeight;
             
-            // Якщо прийшло нове повідомлення від іншого користувача
             const lastMsg = messages[messages.length - 1];
             if (lastMsg.username !== username && lastMessageCount > 0) {
                 let audio = new Audio('/static/notification.mp3');
                 audio.play().catch(() => {});
-                showScreenNotification(lastMsg.username, lastMsg.message); // ПУШ НА ЕКРАН!
+                showScreenNotification(lastMsg.username, lastMsg.message, lastMsg.avatar);
             }
             
             lastMessageCount = messages.length;
         }
     } catch (e) {
-        console.error("Помилка зв'язку з сервером:", e);
+        console.error("Ошибка обновления чата:", e);
     }
 }
 
-// 3. НАДСИЛАННЯ ПОВІДОМЛЕННЯ (Кнопка "Текст")
 async function sendMessage() {
-    const input = document.getElementById('messageInput'); // твій інпут
+    const input = document.getElementById('messageInput');
     const text = input.value.trim();
     if (!text) return;
     
@@ -146,23 +138,34 @@ async function sendMessage() {
             })
         });
         input.value = '';
-        checkMessages(); // Одразу оновлюємо чат
+        checkMessages();
     } catch (e) {
-        alert("Помилка відправки");
+        console.error("Ошибка отправки:", e);
     }
 }
 
-// Функція для твоєї кнопки "Очистити"
+function changeAvatar() {
+    const newUrl = prompt("Вставьте ссылку на новую аватарку (включая GIF):", avatarUrl);
+    if (newUrl && newUrl.trim() !== "") {
+        avatarUrl = newUrl.trim();
+        localStorage.setItem('chat_avatar', avatarUrl);
+        document.getElementById('headerAvatar').src = avatarUrl;
+    }
+}
+
 async function clearChat() {
-    if (confirm("Очистити історію для всіх?")) {
+    if (confirm("Очистить историю для всех?")) {
         await fetch('/clear_history', { method: 'POST' });
         lastMessageCount = 0;
+        document.getElementById('chat').innerHTML = '';
         checkMessages();
     }
 }
 
-// Запускаємо таймер оновлення чату
 setInterval(checkMessages, 2000);
 checkMessages();
 </script>
+
+</body>
+</html>
 
