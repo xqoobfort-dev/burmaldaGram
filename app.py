@@ -1,14 +1,8 @@
-from gevent import monkey
-monkey.patch_all()
-
-from flask import Flask, render_template, request, jsonify
-from flask_sock import Sock
-import json
 import os
+import json
+from flask import Flask, render_template, request, jsonify
 
 app = Flask(__name__)
-sock = Sock(app)
-
 HISTORY_FILE = 'chat_history.json'
 
 def load_history():
@@ -20,11 +14,9 @@ def load_history():
             return []
     return []
 
-def save_to_history(msg_obj):
+def save_to_history(msg):
     history = load_history()
-    history.append(msg_obj)
-    if len(history) > 100:
-        history.pop(0)
+    history.append(msg)
     with open(HISTORY_FILE, 'w', encoding='utf-8') as f:
         json.dump(history, f, ensure_ascii=False, indent=4)
 
@@ -32,47 +24,19 @@ def save_to_history(msg_obj):
 def index():
     return render_template('index.html')
 
+# Надійні роути замість сокетів для безкоштовного Render:
+@app.route('/get_messages')
+def get_messages():
+    return jsonify(load_history())
+
+@app.route('/send_message', methods=['POST'])
+def send_message():
+    data = request.json
+    save_to_history(data)
+    return jsonify({"status": "ok"})
+
 @app.route('/clear_history', methods=['POST'])
 def clear_history():
     if os.path.exists(HISTORY_FILE):
-        try:
-            os.remove(HISTORY_FILE)
-        except:
-            pass
-    return '', 204
-
-@sock.route('/ws')
-def chat(ws):
-    clients.append(ws)
-    history = load_history()
-    for msg in history:
-        try:
-            ws.send(json.dumps(msg))
-        except:
-            pass
-
-    try:
-        while True:
-            message_data = ws.receive()
-            if message_data:
-                print(f"Отримано на сервері: {message_data}")
-                try:
-                    msg_obj = json.loads(message_data)
-                    save_to_history(msg_obj)
-                except Exception as e:
-                    print(f"Помилка збереження: {e}")
-
-                for client in clients:
-                    try:
-                        client.send(message_data)
-                    except:
-                        if client in clients:
-                            clients.remove(client)
-    except:
-        if ws in clients:
-            clients.remove(ws)
-
-if __name__ == '__main__':
-    clients = []
-    app.run(debug=False, host='0.0.0.0', port=5000)
-
+        os.remove(HISTORY_FILE)
+    return jsonify({"status": "cleared"})
