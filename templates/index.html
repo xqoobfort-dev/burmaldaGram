@@ -51,114 +51,118 @@
 </div>
 
 <script>
-    // Умный выбор протокола: wss:// для ngrok, ws:// для локалки
-    const wsProtocol = window.location.protocol === "https:" ? "wss://" : "ws://";
-    const socket = new WebSocket(wsProtocol + window.location.host + "/ws");
+// 1. ЗАВАНТАЖУЄМО ДАНІ ПРОФІЛЮ З ПАМ'ЯТІ БРАУЗЕРА
+let username = localStorage.getItem('chat_username');
+let avatarUrl = localStorage.getItem('chat_avatar');
 
-    // Загружаем данные профиля из памяти устройства
-    let username = localStorage.getItem('chat_username');
-    let avatarUrl = localStorage.getItem('chat_avatar');
+// Якщо користувач зайшов уперше — запитуємо нікнейм
+if (!username) {
+    username = prompt("Введіть ваш нікнейм для чату:");
+    if (!username || username.trim() === "") {
+        username = "Анонім_" + Math.floor(Math.random() * 1000);
+    }
+    avatarUrl = "/static/default_avatar.png"; // твоя стандартна аватарка
 
-    // Если в памяти СТРОГО пусто, то только тогда спрашиваем имя
-    if (username === null || username === undefined || username === "") {
-        username = prompt("Введіть ваш нікнейм для загального чату:");
-        if (username === null || username.trim() === "") {
-            username = "Анонім_" + Math.floor(Math.random() * 1000);
-        }
-        avatarUrl = "https://flaticon.com";
+    localStorage.setItem('chat_username', username);
+    localStorage.setItem('chat_avatar', avatarUrl);
+}
+
+// Виводимо нікнейм у шапку сайту
+const headerUsername = document.getElementById('headerUsername');
+if (headerUsername) {
+    headerUsername.textContent = username;
+}
+
+let lastMessageCount = 0;
+
+// Запитуємо дозвіл на сповіщення на екрані
+if ("Notification" in window && Notification.permission === "default") {
+    Notification.requestPermission();
+}
+
+function showScreenNotification(sender, text) {
+    if ("Notification" in window && Notification.permission === "granted" && document.hidden) {
+        new Notification(`Нове повідомлення від ${sender}`, {
+            body: text,
+            icon: '/static/default_avatar.png'
+        });
+    }
+}
+
+// 2. АВТОМАТИЧНЕ ОНОВЛЕННЯ ЧАТУ КОЖНІ 2 СЕКУНДИ
+async function checkMessages() {
+    try {
+        const res = await fetch('/get_messages');
+        const messages = await res.json();
         
-        // Надежно фиксируем данные в браузере навсегда
-        localStorage.setItem('chat_username', username);
-        localStorage.setItem('chat_avatar', avatarUrl);
-    }
-
-    document.getElementById('headerUsername').textContent = username;
-    document.getElementById('headerAvatar').src = avatarUrl;
-
-    const chatDiv = document.getElementById('chat');
-    const input = document.getElementById('messageInput');
-    const avatarInput = document.getElementById('avatarInput');
-    const headerAvatar = document.getElementById('headerAvatar');
-
-    avatarInput.addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                avatarUrl = event.target.result;
-                headerAvatar.src = avatarUrl; 
-                localStorage.setItem('chat_avatar', avatarUrl);
-            };
-            reader.readAsDataURL(file);
-        }
-    });
-
-    function sendMessage() {
-        const textValue = input.value.trim();
-        if (textValue !== "") {
-            const now = new Date();
-            const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-            socket.send(JSON.stringify({
-                username: username,
-                text: textValue,
-                avatar: avatarUrl,
-                time: timeString
-            }));
-            input.value = '';
-        }
-    }
-
-    socket.onmessage = function(event) {
-        try {
-            const chatData = JSON.parse(event.data);
-
-            if (chatData && chatData.text) {
-                // Звук уведомления, если сообщение пришло от другого участника
-                if (chatData.username !== username) {
-                    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                    const osc = audioCtx.createOscillator();
-                    const gain = audioCtx.createGain();
-                    osc.connect(gain); gain.connect(audioCtx.destination);
-                    osc.frequency.setValueAtTime(587.33, audioCtx.currentTime);
-                    gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
-                    osc.start(); osc.stop(audioCtx.currentTime + 0.1);
-                }
-
-                const msgBlock = document.createElement('div');
-                msgBlock.className = 'message-block';
-                if (chatData.username === username) msgBlock.className += ' my-message';
-
-                const msgTime = chatData.time || ""; 
-
-                msgBlock.innerHTML = `
-                    <img class="avatar" src="${chatData.avatar}" alt="avatar">
-                    <div class="message-content">
-                        <div class="username">${chatData.username}</div>
-                        <div class="text">${chatData.text}</div>
-                        <div style="font-size: 9px; opacity: 0.5; text-align: right; margin-top: 4px;">${msgTime}</div>
+        if (messages.length > lastMessageCount) {
+            const chatBox = document.getElementById('chat'); // твій блок повідомлень
+            chatBox.innerHTML = '';
+            
+            messages.forEach(data => {
+                // Відображаємо повідомлення з підтримкою аватарок, як у тебе в дизайні
+                chatBox.innerHTML += `
+                    <div class="message-container" style="margin-bottom: 12px; display: flex; align-items: center; gap: 10px;">
+                        <img src="${data.avatar || '/static/default_avatar.png'}" style="width: 35px; height: 35px; border-radius: 50%;">
+                        <div>
+                            <span style="font-weight: bold; color: #4ba3e3;">${data.username}:</span>
+                            <span style="color: white; margin-left: 5px;">${data.message}</span>
+                        </div>
                     </div>
                 `;
-                chatDiv.appendChild(msgBlock);
-                chatDiv.scrollTop = chatDiv.scrollHeight;
-            }
-        } catch (e) {
-            console.error("Ошибка чтения пакета:", e);
-        }
-    };
-
-    function clearChat() {
-        if (confirm("Ви впевнені, що хочете очистити весь загальний чат?")) {
-            fetch('/clear_history', { method: 'POST' }).then(() => {
-                chatDiv.innerHTML = '';
             });
+            
+            chatBox.scrollTop = chatBox.scrollHeight; // Скролимо чат вниз
+            
+            // Якщо прийшло нове повідомлення від іншого користувача
+            const lastMsg = messages[messages.length - 1];
+            if (lastMsg.username !== username && lastMessageCount > 0) {
+                let audio = new Audio('/static/notification.mp3');
+                audio.play().catch(() => {});
+                showScreenNotification(lastMsg.username, lastMsg.message); // ПУШ НА ЕКРАН!
+            }
+            
+            lastMessageCount = messages.length;
         }
+    } catch (e) {
+        console.error("Помилка зв'язку з сервером:", e);
     }
+}
 
-    input.addEventListener("keypress", function(event) {
-        if (event.key === "Enter") sendMessage();
-    });
+// 3. НАДСИЛАННЯ ПОВІДОМЛЕННЯ (Кнопка "Текст")
+async function sendMessage() {
+    const input = document.getElementById('messageInput'); // твій інпут
+    const text = input.value.trim();
+    if (!text) return;
+    
+    try {
+        await fetch('/send_message', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                username: username, 
+                message: text,
+                avatar: avatarUrl 
+            })
+        });
+        input.value = '';
+        checkMessages(); // Одразу оновлюємо чат
+    } catch (e) {
+        alert("Помилка відправки");
+    }
+}
+
+// Функція для твоєї кнопки "Очистити"
+async function clearChat() {
+    if (confirm("Очистити історію для всіх?")) {
+        await fetch('/clear_history', { method: 'POST' });
+        lastMessageCount = 0;
+        checkMessages();
+    }
+}
+
+// Запускаємо таймер оновлення чату
+setInterval(checkMessages, 2000);
+checkMessages();
 </script>
-</body>
-</html>
 
