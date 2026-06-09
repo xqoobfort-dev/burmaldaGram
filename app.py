@@ -6,7 +6,7 @@ from pusher import Pusher
 app = Flask(__name__)
 HISTORY_FILE = 'chat_history.json'
 
-# Твої персональні ключі з Pusher вже тут:
+# Твои рабочие ключи Pusher
 pusher_client = Pusher(
   app_id='2164473',
   key='c61ab00a01d16eb5107f',
@@ -43,14 +43,11 @@ def send_message():
     data = request.json
     if data and data.get('message'):
         save_to_history(data)
-        
-        # Миттєва надшвидка доставка повідомлення через Pusher
+        # Мгновенная доставка сообщения во все браузеры
         pusher_client.trigger('chat-channel', 'new-message', data)
-        
         return jsonify({"status": "ok"})
     return jsonify({"status": "error"}), 400
 
-# Замени строку декоратора на эту:
 @app.route('/clear_history', methods=['GET', 'POST'])
 def clear_history():
     if os.path.exists(HISTORY_FILE):
@@ -63,4 +60,3 @@ def clear_history():
 
 if __name__ == '__main__':
     app.run(debug=True)
-
